@@ -1,0 +1,18 @@
+# START of Program #
+    10  jump     17     
+    17  jump     20     
+# Print Subroutine #
+    11  load-Ind 0      
+    12  jumpeq   16     
+    13  writech 
+    14  increment 1      
+    15  jump     11     
+    16  return  
+    18  constant 97     
+    19  constant 0      
+    20  loadv    18     
+    21  store    1       
+    22  loadv    13     
+    23  writech  0      
+# End of Print #
+    24  halt    
