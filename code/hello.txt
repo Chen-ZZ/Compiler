@@ -1,2 +1,2 @@
-code Hello;
+code Hello_world;
 {print("Hello");}

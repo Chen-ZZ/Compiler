@@ -37,8 +37,8 @@ tokenNames = \
     # More symbol will be added.
 
 # Define tokens as variables in the compiler.
-unknownToken, codesym, declaresym, idsym, varsym, number, \
-assignsym, leftbrace, rightbrace, leftbracket, rightbracket, \
+unknownToken, codesym, declaresym, assignsym, idsym, varsym, number, \
+leftbrace, rightbrace, leftbracket, rightbracket, \
 equals, plus, minus, multiply, devine, \
 semicolon, comma, sharp, \
 printsym, stringvalue, endfile = range(0, len(tokenNames));
@@ -111,7 +111,7 @@ def dumpSymbolTable():
 # Printer function for given symbol.
 def printToken(inputToken):
     if inputToken.token == idsym:  # For id symbols.
-        print "Token = %10s %-10s adr = %3d" % (tokenNames[inputToken.token], inputToken.name, inputToken.address);
+        print "Token = %10s, %-10s adr = %3d" % (tokenNames[inputToken.token], inputToken.name, inputToken.address);
     elif inputToken.token == number:  # For numbers.
         print "Token = %10s %d" % (tokenNames[inputToken.token], inputToken.value);
     else:  # Other symbols.
@@ -232,7 +232,14 @@ def getToken():
 #===================================================================================
 # Main list of statements processing function
 def stmtList():
-    stmt();
+    stmt(); # Process the first statement.
+    
+    while (token.token == semicolon): # If there is a statement list, then process the next. 
+        getToken(); # Skip semicolon.
+        if token.token == rightbrace: # End of statement list, break out while loop.
+            break;
+        
+        stmt(); # Otherwise continue to process the statement(s).
     
 # Single statement processing function.
 def stmt():
