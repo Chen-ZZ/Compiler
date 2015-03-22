@@ -1,2 +1,2 @@
 program Hello;
-{ print("a"); }
+{ print("hello"); }

@@ -1,6 +1,6 @@
 # START of Program #
     10  jump     17     
-    17  jump     20     
+    17  jump     24     
 # Print Subroutine #
     11  load-Ind 0      
     12  jumpeq   16     
@@ -8,13 +8,19 @@
     14  increment 1      
     15  jump     11     
     16  return  
+# Start Declaration #
+# Start Statement List #
 # Start Printing Statement #
-    18  constant 97     
-    19  constant 0      
-    20  loadv    18     
-    21  store    1      
-    22  call     11     
-    23  loadv    13     
-    24  writech  0      
+    18  constant 104    
+    19  constant 101    
+    20  constant 108    
+    21  constant 108    
+    22  constant 111    
+    23  constant 0      
+    24  loadv    18     
+    25  store    1      
+    26  call     11     
+    27  loadv    13     
+    28  writech  0      
 # End of Print #
-    25  halt    
+    29  halt    

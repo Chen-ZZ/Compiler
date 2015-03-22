@@ -3,10 +3,14 @@
 # Version 0.2
 # Compiler v0.1 Definition of all tokens.
 # Compiler v0.2 Initialization of symbol table for all tokens.
-# Compiler v0.3 Lexical Analyser, the Scanner, print Hello World.
+# Compiler v0.3 Lexical Analyser(the Scanner), set up print subroutine in the VM.
 #===================================================================================
 
-import sys
+import FileOperator;  
+import sys;
+
+#from FileOperator import *; # Another way to import a py file.
+ 
 #===================================================================================
 ### GLOBAL variables Deceleration. ###
 compilerVersion = 0.3;
@@ -23,6 +27,7 @@ outputArray = [];  # An temporary array to hold all machine code/instructions.
 
 varptr = 900  # Arbitrary base address of memory for variables, which starts from this address.
 codeptr = 10  # Address to output next instruction (for machine code, 1-9 are reserved).
+printStartAddress = 0; # Address to start print subroutine.
 
 token = None;  # A symbol, will be modified by each call of getToken().
 ignoreCharacters = ["\t", " ", "\n"];  # Ignore tabs, spaces and new lines.
@@ -105,8 +110,10 @@ def dumpSymbolTable():
     print("=== Symbol Table Contents ===");
     for name in symtable.keys():
         tempToken = symtable[name];
-        if tempToken.token == idsym: # Only print symbols from source code.
+        if tempToken.token == idsym:  # Only print symbols from source code.
             printToken(tempToken);
+   
+   
             
 # Printer function for given symbol.
 def printToken(inputToken):
@@ -126,6 +133,59 @@ def printError(msg):
     printToken(token);  # Print the token the error occurred on
     print ("*" * 50);  # Print footer
 
+
+# Display everything in the output array.
+def DisplayObjectCode():
+    print "*** Target VM Code Start ***"
+    for line in outputArray:
+        print line;
+    print "*** Target VM Code End ***"
+        
+
+
+
+# Emit a line of object code to output array.
+def emit(memoryAddress, operationCode, parameter):
+    global codeptr;
+    global outputArray;
+    
+    if (memoryAddress == 0):  # If no memory address given, this is a standard emit.
+        memoryAddress = codeptr;  # Assign current code pointer for this line of instruction.
+        codeptr = codeptr + 1;  # Increment code pointer by 1.
+        
+    instruction = "";  # Hold the instruction.
+    if parameter != None:  # Instruction format if parameter provided.
+        instruction = "%6d %-8s %-7d" % (memoryAddress, operationCode, parameter);
+    else:  # Instruction format if none parameter provided.
+        instruction = "%6d %-8s" % (memoryAddress, operationCode);
+        
+    outputArray.append(instruction);        
+
+# Emit a line of comment to the object code. 
+def emitComment(message):   
+    global outputArray;
+    comment = "## %s ##" % message;
+    outputArray.append(comment);
+
+# Initialization of all instructions.
+def emitInit():
+    global codeptr;
+    global printStartAddress;
+    
+    emitComment("Start Of Object Code");
+    codeptr = codeptr + 1; # Researve blank memory address for jump to the actual instructions.
+    
+    emitComment("Reserved Print Subroutine");
+    
+    printStartAddress = codeptr;
+    
+    emit(0, "load-Ind", 0);
+    emit(0, "jumpeq", printStartAddress + 5);
+    emit(0, "writech", None);
+    emit(0, "increment", 1);
+    emit(0, "jump", printStartAddress);
+    emit(0, "return", None);
+    
 #===================================================================================
 
 #===============================================================================
@@ -232,14 +292,14 @@ def getToken():
 #===================================================================================
 # Main list of statements processing function
 def stmtList():
-    stmt(); # Process the first statement.
+    stmt();  # Process the first statement.
     
-    while (token.token == semicolon): # If there is a statement list, then process the next. 
-        getToken(); # Skip semicolon.
-        if token.token == rightbrace: # End of statement list, break out while loop.
+    while (token.token == semicolon):  # If there is a statement list, then process the next. 
+        getToken();  # Skip semicolon.
+        if token.token == rightbrace:  # End of statement list, break out while loop.
             break;
         
-        stmt(); # Otherwise continue to process the statement(s).
+        stmt();  # Otherwise continue to process the statement(s).
     
 # Single statement processing function.
 def stmt():
@@ -248,8 +308,34 @@ def stmt():
 
 # For each statement, there is a particular statement function.
 def printStmt():
-    getToken();
+    emitComment("Start Print Statement"); # Comment to notify start of print statement.
     
+    getToken(); # Skip the "print" key word.
+    
+    if token.token == leftbracket: # "(" expected after "print".
+        getToken(); # Skip "(".
+    else: printError(" '(' expected after 'Print'");
+    
+    printItem(); # Process the current item after the bracket.
+    
+    while token.token == comma:
+        getToken();
+        printItem(); 
+        
+    if token.token == rightbracket: # End of print statement.
+        getToken(); # Skip ')'.
+    else: printError("')' expected as the end of print. ");
+    
+        
+# For each item inside the print brackets.
+def printItem():
+    global codeptr;
+    global printStartAddress;
+    
+    # TODO Put a string into memory.
+    
+    getToken(); # Skip string token.
+        
         
 #===================================================================================
 
@@ -285,24 +371,26 @@ def code():
 #===================================================================================
 # Main Function of the compiler, loads the source code file and output a object file.
 def main():
-    print(compilerVersion);
+    print("Compiler Version: "), compilerVersion;
     
     global srcFileName;
     global src;
+    global outputFileName;
+    global outputArray;
+    
+    src = FileOperator.openSourceCode(srcFileName);  # @UndefinedVariable
     
     initSymbolTable();
     
-    srcFile = open(srcFileName);
-    src = srcFile.readlines();
-    srcFile.close();
-    
+    emitInit(); # Emit print subroutine into output array.
     
     code();  # Process the input source code.
-    # printObj() # Display the machine code to a console.
-    # saveObj() # Save the machine code to a object file.
+    
+    DisplayObjectCode() # Display the machine code to a console.
     
     dumpSymbolTable();
     
+    # saveObjectCode(outputFileName, outputArray) # Save the machine code to a object file.
     sys.exit();
 
 
