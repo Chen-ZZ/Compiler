@@ -1,2 +1,6 @@
 code Hello_world;
-{print("Hello");}
+declare a=2,b=3,c;
+{
+	c = a * (a + b);
+	print("Hello");
+}

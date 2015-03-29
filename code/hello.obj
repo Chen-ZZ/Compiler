@@ -1,0 +1,34 @@
+## Start Of Object Code ##
+## Reserved Print Subroutine ##
+    11 load-Ind 0      
+    12 jumpeq   16     
+    13 writech 
+    14 increment 1      
+    15 jump     11     
+    16 return  
+    10 jump     17     
+## Start Declaration ##
+    17 loadv    2      
+    18 store    900    
+    19 loadv    3      
+    20 store    901    
+    21 loadv    0      
+    22 store    902    
+## Start Assginment Statement ##
+    23 load     900    
+    24 load     900    
+    25 load     901    
+## Start Print Statement ##
+    27 constant 72     
+    28 constant 101    
+    29 constant 108    
+    30 constant 108    
+    31 constant 111    
+    32 constant 0      
+    26 jump     33     
+    33 loadv    27     
+    34 store    1      
+    35 call     11     
+    36 loadv    13     
+    37 writech  0      
+    38 halt    
