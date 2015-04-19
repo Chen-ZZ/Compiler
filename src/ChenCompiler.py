@@ -5,6 +5,9 @@
 # Compiler v0.2 Initialization of symbol table for all tokens.
 # Compiler v0.3 Lexical Analyser(the Scanner), set up print subroutine in the VM.
 # Compiler v0.4 Lexical Analyser(the Scanner), expression processing.
+# Compiler v0.5 Lexical Analyser(the Scanner), function declaration.
+# Compiler v0.6 Compiler, function call.
+# Compiler v0.7 Compiler, recursively function call.
 #===================================================================================
 
 import sys;
@@ -13,10 +16,10 @@ import sys;
  
 #===================================================================================
 ### GLOBAL variables Deceleration. ###
-compilerVersion = 0.4;
+compilerVersion = 0.6;
 
-srcFileName = "../code/hello.txt";  # Path to the source code file.
-outputFileName = "../code/hello.obj";  # path for the output machine code obj file.
+srcFileName = "../code/simple_func.txt";  # Path to the source code file.
+outputFileName = "../code/sss.obj";  # path for the output machine code obj file.
 
 src = [];  # The input file is stored as an array of string lines.
 linenumber = 0;  # The current line number of source code.
@@ -30,12 +33,14 @@ varptr = 900  # Arbitrary base address of memory for variables, which starts fro
 codeptr = 10  # Address to output next instruction (for machine code, 1-9 are reserved).
 printStartAddress = 0;  # Address to start print subroutine.
 
+functionName = ""  # Stores the current function parsed - used for name mangling
+
 token = None;  # A symbol, will be modified by each call of getToken().
 
 # Reserved Token Symbols.
 tokenNames = \
     [ "unknownToken", "codesym", "declare", "assignsym", "idsym", "varsym", "number",
-     "leftbrace", "rightbrace", "leftbracket", "rightbracket",
+     "leftbrace", "rightbrace", "leftbracket", "rightbracket", "functionsym", "returnsym",
      "equals", "plus", "minus", "multiply", "divide",
      "semicolon", "comma", "sharp",
      "print", "stringvalue", "endfile" ]
@@ -43,7 +48,7 @@ tokenNames = \
 
 # Define tokens as variables in the compiler.
 unknownToken, codesym, declaresym, assignsym, idsym, varsym, number, \
-leftbrace, rightbrace, leftbracket, rightbracket, \
+leftbrace, rightbrace, leftbracket, rightbracket, functionsym, returnsym, \
 equals, plus, minus, multiply, divide, \
 semicolon, comma, sharp, \
 printsym, stringvalue, endfile = range(0, len(tokenNames));
@@ -88,6 +93,8 @@ def initSymbolTable():
     addToSymTable('declare', declaresym);
     addToSymTable('var', varsym);
     addToSymTable('print', printsym);
+    addToSymTable('function', functionsym);
+    addToSymTable('return', returnsym)
     
     addToSymTable(',', comma);
     addToSymTable(';', semicolon);
@@ -282,6 +289,7 @@ def ungetCh():
 # Get the next valid token.
 def getToken():
     global token;
+    global functionName;
     global tokenNames;
     
     ch = getCh();  # Get next character.
@@ -298,6 +306,12 @@ def getToken():
         ungetCh();  # Jump back to the previous character since it's not used.
         
         tempName = tempName.lower();  # This compiler is not case sensitive.
+        
+        if functionName != "":  # If functionName is not null, process of a function
+            t = lookup(tempName)  # See if the symbol table contains the current identifier
+            if t is None or t.token == 1:  # If no token is found or the identifier is not system reserved
+                tempName = functionName + "__" + tempName  # Mangle the name to include the function name
+        
         token = lookup(tempName);  # See if this is a reserved token or known token.
         if token is None:  # if not known, then add it to symbol table.
             token = addToSymTable(tempName, idsym);
@@ -404,13 +418,15 @@ def stmtList():
             break;
         
         stmt();  # Otherwise continue to process the statement(s).
-    
+
 # Single statement processing function.
 def stmt():
     if token.token == printsym:
         printStmt();
     elif token.token == idsym:
         assignmentStmt();
+    elif token.token == returnsym:
+        returnStmt()  # return keyword, process return statement
     else: 
         printError("Start of a statement expected.");
 
@@ -445,28 +461,31 @@ def printItem():
         emit(0, "call", printStartAddress);
         getToken();  # Skip string token.
     else:
-        # TODO : expressionStmt();
-        sys.exit();
+        expression();
+        emit(0, "store", 990)
+        emit(0, "writeint", 990)
     
     emit(0, "loadv", 13);  # Put 13 to accumulator where 13 is a new line character.
     emit(0, "writech", 0);  # Display the value in accumulator as ascii to the console.
 
 
 def assignmentStmt():
-    emitComment("Start Assginment Statement");  # Comment to notify start of print statement
-    which_ID = token             # Remember which ID on the left side of "="
-    if lookup(which_ID.name) == None: # If this ID has not been declared, then error.
-        printError("Udeclared variable detected.");
+    emitComment("Start Assignment Statement");  # Comment to notify start of print statement.
+    which_ID = token  # Remember which ID on the left side of "=".
+    
+    if lookup(which_ID.name) == None:  # If this ID has not been declared, then error.
+        printError("Undeclared variable detected.");
     
     getToken();  # Skip this ID token.
     
     if token.token == assignsym:
-        getToken(); # Skip the '=' token.
+        getToken();  # Skip the '=' token.
     else:
         printError("'=' expected in an assignment statement.");
     
     expression();
     
+    emit(0, "store", which_ID.address)  # emit 
     
 
 #===================================================================================
@@ -480,15 +499,20 @@ def expression():
         getToken();  # Skip the '+' or '-' token.
         
         # Object code to calculate the left hand side result.
+        emit(0, "store", 990)  # Save current result of the left side of '+/-' onto stack
+        emit(0, "push", 990)  # Push current result into stack
         
         term();  # Process the right hand side of the operator.
         # Object code to calculate the left hand side result, store the result.
+        emit(0, "pop", 990)  # Pop the result of the left side of '+/-' to 990
         
         # # Object code to calculate the final result of both sides of the operator.
-        if operator == plus:
-            return None;
-        elif operator == minus:
-            return None;
+        if operator.token == plus:
+            emit(0, "add", 990)  # Add accumulator to result at 990
+        else:
+            emit(0, "store", 991)
+            emit(0, "load", 990)
+            emit(0, "subtract", 991)  # Leaves result in Acc
 
 # Process a term    
 def term():
@@ -498,23 +522,44 @@ def term():
         operator = token;  # Remember the operator.
         
         # Object code to calculate the left hand side result.
+        emit(0, "store", 990)  # Store the accumulator at 990
+        emit(0, "push", 990)  # push the result onto the stack
         
         getToken();  # Skip '*' or '/' token.
         factor();  # Process the right hand side of the operator, return the result.
+        
         # Object code to calculate the left hand side result, store the result.
+        emit(0, "pop", 990)  # pop the result of the last factor to 990
         
         # # Object code to calculate the final result of both sides of the operator.
-        if operator == multiply:
-            return None;
-        elif operator == divide:
-            return None;
+        if operator.token == multiply:  # perform multiplication between the two factors
+            print "test"
+            emit(0, "mpy", 990)
+        else:  # perform division, need to reverse results
+            emit(0, "store", 991)
+            emit(0, "load", 990)
+            emit(0, "div", 991)
         
 # Process a factor
 def factor():
     if token.token == idsym:  # If the factor is an ID token.
         idtoken = token;
-        emit(0, "load", idtoken.address);  # Load the value in the ID address into ACC.
-        getToken();  # Skip this number token.       
+        getToken();  # Skip this number token.
+        
+        if token.token == leftbracket:  # Left bracket indicates this is a function call
+            getToken();  # Get the next token, skip '(' token
+            
+            emitComment(" ++ Start Function Call");  # Emit comment to notify start of function call            
+            functionCall(idtoken);  # Prepare the function call by process parameter(s)
+            emit(0, "call", idtoken.address);  # Call the function subroutine
+            emitComment(" ++ End Function Call");  # Emit comment to notify the end of the function call
+            
+            if token.token == rightbracket: 
+                getToken();  # Right bracket expected to terminate the end of function call
+            else: printError(" ) expected as the end of function call in factor.");
+        else:
+            emit(0, "load", idtoken.address)  # Else, # Load the value in the ID address into ACC.
+               
     
     elif token.token == number:  # If the factor is an number token.
         emit(0, "loadv", token.value);  # Load the value of this number into ACC.
@@ -533,14 +578,112 @@ def factor():
         printError("Start of factor error detected.");
 
 
+# process a function
+def functionList():
+    emitComment("Start of Function Declaration")
+    
+    function()
+    
+    while token.token == functionsym:
+        function()
+    
+    emitComment("End of Function Declaration")
+    
+def function():
+    global codeptr;
+    global functionName;
+    
+    getToken();  # Skip function token
+    
+    if token.token == idsym:
+        functionToken = token;  # Store this function name token
+        functionToken.address = codeptr;  # Set the start index of this function in instructions 
+        functionName = functionToken.name;  # Set global functionName to indicate this is the current processing function
+        
+        getToken();  # Skip function name token
+    else: printError("Function name expected in function declaration.");
+     
+    functionToken.paramList = functionParams();  # Attach all parameters to the function name(ID) token
+    
+    if token.token == semicolon: 
+        getToken();  # Skip the ';'
+    else: printError("; expected as the end of a function declaration line.");
+    
+    # ## For function has its local variables, according the test program, 
+    # ## this local declaration is between function declaration and function statement list.
+    if token.token == declaresym: 
+        variables();  # If local variables are declared, process them
+    
+    if token.token == leftbrace: getToken();  # Skip the left brace
+    else: printError("{ expected as the start of function statement list.")
+    
+    emitComment("-- Start Function Statement List");
+    
+    stmtList();  # Process the statement list inside function block
+    
+    emit(0, "return", None);  # Emit return statement
+    
+    emitComment("-- End Function Statement List");
+    
+    functionName = "";  # Clear the function name
+    
+    if token.token == rightbrace: getToken();  # Skip right brace
+    else: printError(" } expected as the end of a function statement list.");
+    
+# Process the parameters in the function declaration
+def functionParams():
+    global varptr;
+    
+    if token.token == leftbracket: 
+        getToken();  # Skip the left bracket token
+    else: printError("( expected as the start of function parameters.");
+    
+    paramList = [];  # A temporary list of parameters to return
+    
+    while token.token == idsym:  # While there are parameters, process them by allocation of memory addresses.
+        token.address = varptr;
+        paramList.append(varptr);
+        varptr = varptr + 1;
+        
+        getToken();  # Skip parameter id token
+        
+        if token.token == comma: 
+            getToken();  # Skip the comma between parameters
+    
+    if token.token == rightbracket: 
+        getToken();  # Skip the right bracket token
+    else: printError(" ) expected as the end of function parameters.");     
+    
+    return paramList  # Return the list of parameters, they all have an address
+
+# Process a function call, prepare the program for a function call, assigns those parameters for the function
+def functionCall(funcName):
+    for param in funcName.paramList:  # For each parameter belongs to the function
+        expression();  # Process the expressions inside function call statement
+        emit(0, "store", param);
+        if token.token == comma: getToken();
+
+
+# Process a return statement
+def returnStmt():
+    getToken();                               # Skip return token
+    
+    if token.token == leftbracket: 
+        getToken();    # left bracket expected for the start of return expression
+    else: printError(" ( expected for start of return statement expression.")
+    
+    expression();                            # calculate the return expression
+    
+    if token.token == rightbracket: 
+        getToken();   # right bracket expected for the end of the return expression
+    else: printError(" ) expected for end of return statement expression.")
+
 #===================================================================================
 # Main code processing function
 def code():
     
     emitInit();  # Emit print subroutine into output array.
    
-    emit(10, "jump", codeptr)  # Jump over the initial code and function definitions
-    
     getToken();  # Get the first token of the input file.
     # printToken(token);
     
@@ -558,6 +701,13 @@ def code():
      
     if token.token == declaresym:  # Process local variables are declaration. 
         variables();
+    
+    if token.token == functionsym:  # If there are functions declared, process them 
+        functionList();
+        
+    emitComment("++ Start Execution ++")
+    emit(10, "jump", codeptr)  # Jump over the initial code and function definitions
+        
     emitComment("Start Declaration")
     emitVraibleInit()  # Initialize all variables by creating blank memory spaces for them
     
@@ -565,7 +715,12 @@ def code():
         getToken();
     else: printError(" '{' missing...");
     
+    emitComment("Start Statement List")
     stmtList();
+    
+    if token.token == rightbrace:  # right brace expected to terminate the program
+        print("\n*** Compilation finished ***\n")
+    else: printError(" } expected for end of program statement list.")
     
     emit(0, "halt", None)  # emit halt to stop execution
     

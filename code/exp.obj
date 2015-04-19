@@ -16,10 +16,21 @@
     22 store    902    
 ## Start Assginment Statement ##
     23 load     900    
+    24 store    990    
+    25 push     990    
+    26 load     900    
+    27 store    990    
+    28 push     990    
+    29 load     901    
+    30 pop      990    
+    31 add      990    
+    32 pop      990    
+    33 mpy      990    
+    34 store    902    
 ## Start Print Statement ##
-    24 load     902    
-    25 store    990    
-    26 writeint 990    
-    27 loadv    13     
-    28 writech  0      
-    29 halt    
+    35 load     902    
+    36 store    990    
+    37 writeint 990    
+    38 loadv    13     
+    39 writech  0      
+    40 halt    

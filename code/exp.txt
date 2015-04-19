@@ -1,6 +1,6 @@
 code Hello_world;
 declare a=2,b=3,c;
 {
-	c = a;
+	c = a * (a+b);
 	print(c);
 }

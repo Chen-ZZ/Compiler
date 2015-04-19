@@ -1,0 +1,10 @@
+code simple_func;
+declare v = 5;
+function summer(num, ber);
+{
+	return (num + ber);
+}
+{
+	v = summer(v, v);
+	print(v);
+}
