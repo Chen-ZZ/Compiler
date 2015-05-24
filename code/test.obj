@@ -1,0 +1,71 @@
+## Start Of Object Code ##
+    10 jump     17     
+    49 jump     58     
+## Reserved Print Subroutine ##
+    11 load-Ind 0      
+    12 jumpeq   16     
+    13 writech 
+    14 increment 1      
+    15 jump     11     
+    16 return  
+## ++ Start Execution ++ ##
+## Start Declaration ##
+    17 loadv    0      
+    18 store    900    
+    19 loadv    0      
+    20 store    901    
+## Start Statement List ##
+## Start Assignment Statement ##
+    21 loadv    1      
+    22 store    900    
+## Start Assignment Statement ##
+    23 loadv    0      
+    24 store    901    
+## Start While ##
+    25 load     900    
+    26 store    990    
+    27 push     990    
+    28 loadv    5      
+    29 store    991    
+    30 pop      990    
+    31 load     990    
+    32 compare  991    
+    33 jumpgt   49     
+## Start Assignment Statement ##
+    34 load     901    
+    35 store    990    
+    36 push     990    
+    37 load     900    
+    38 pop      990    
+    39 add      990    
+    40 store    901    
+## Start Assignment Statement ##
+    41 load     900    
+    42 store    990    
+    43 push     990    
+    44 loadv    1      
+    45 pop      990    
+    46 add      990    
+    47 store    900    
+    48 jump     25     
+## End While ##
+## Start Print Statement ##
+    50 constant 82     
+    51 constant 101    
+    52 constant 115    
+    53 constant 117    
+    54 constant 108    
+    55 constant 116    
+    56 constant 58     
+    57 constant 0      
+    58 loadv    50     
+    59 store    1      
+    60 call     11     
+    61 loadv    13     
+    62 writech  0      
+    63 load     901    
+    64 store    990    
+    65 writeint 990    
+    66 loadv    13     
+    67 writech  0      
+    68 halt    

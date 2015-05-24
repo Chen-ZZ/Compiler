@@ -1,0 +1,17 @@
+code Hello;
+class box(){
+	attribute length;
+	attribute height;
+	attribute width;
+}
+{
+	x = new box();
+	y = new box();
+	
+	x.length = 20;
+	x.height = 30;
+	x.width = 40;
+	y.length = 50;
+	
+	print(x.length, x.height,x.width, y.length);
+}

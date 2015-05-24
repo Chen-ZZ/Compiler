@@ -1,5 +1,5 @@
 code simple_func;
-declare v = 5;
+declare a, v = 5;
 function summer(num, ber);
 {
 	return (num + ber);

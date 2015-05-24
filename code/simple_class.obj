@@ -1,0 +1,62 @@
+## Start Of Object Code ##
+    10 jump     17     
+## Reserved Print Subroutine ##
+    11 load-Ind 0      
+    12 jumpeq   16     
+    13 writech 
+    14 increment 1      
+    15 jump     11     
+    16 return  
+## ++ Start of Class Decalaration ##
+## ++ End of Class Decalaration ##
+## ++ Start Execution ++ ##
+## Start Declaration ##
+## Start Statement List ##
+## Start Assignment Statement ##
+## Start of New Instance ##
+## Start Reserved Space for New Class Instance. ##
+    17 store    901    
+    18 store    902    
+    19 store    903    
+## End of New Instance ##
+## Start Assignment Statement ##
+## Start of New Instance ##
+## Start Reserved Space for New Class Instance. ##
+    20 store    905    
+    21 store    906    
+    22 store    907    
+## End of New Instance ##
+## Start Assignment Statement ##
+    23 loadv    20     
+    24 store    901    
+## Start Assignment Statement ##
+    25 loadv    30     
+    26 store    902    
+## Start Assignment Statement ##
+    27 loadv    40     
+    28 store    903    
+## Start Assignment Statement ##
+    29 loadv    50     
+    30 store    905    
+## Start Print Statement ##
+    31 load     901    
+    32 store    990    
+    33 writeint 990    
+    34 loadv    13     
+    35 writech  0      
+    36 load     902    
+    37 store    990    
+    38 writeint 990    
+    39 loadv    13     
+    40 writech  0      
+    41 load     903    
+    42 store    990    
+    43 writeint 990    
+    44 loadv    13     
+    45 writech  0      
+    46 load     905    
+    47 store    990    
+    48 writeint 990    
+    49 loadv    13     
+    50 writech  0      
+    51 halt    

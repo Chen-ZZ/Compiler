@@ -7,33 +7,44 @@
 # Compiler v0.4 Lexical Analyser(the Scanner), expression processing.
 # Compiler v0.5 Lexical Analyser(the Scanner), function declaration.
 # Compiler v0.6 Compiler, function call.
-# Compiler v0.7 Compiler, recursively function call.
+# Compiler v0.7 Compiler, if-else statement.
+# Compiler v0.8 Compiler, while statement.
+# Compiler v1.0 Compiler, class declaration.
+# Compiler v1.1 Compiler, class new instance.
+# Compiler v1.2 Compiler, class instance attribute expression.
 #===================================================================================
 
 import sys;
-
-# from FileOperator import *; # Another way to import a py file.
  
 #===================================================================================
 ### GLOBAL variables Deceleration. ###
-compilerVersion = 0.6;
+compilerVersion = 0.7;
 
-srcFileName = "../code/simple_func.txt";  # Path to the source code file.
-outputFileName = "../code/sss.obj";  # path for the output machine code obj file.
+srcFileName = "../code/test.txt";  # Path to the source code file.
+outputFileName = "../code/test.obj";  # path for the output machine code obj file.
 
 src = [];  # The input file is stored as an array of string lines.
 linenumber = 0;  # The current line number of source code.
 charIndex = 0;  # The position of current character in the current line.
 EOF = chr(0);  # The end of file character.
 
+# Stacks to hold condition information:[x  y  jump??  z]
+condStack = []  # Stack for the condition token for building the "jump??" instructions.
+condPtrStack = []  # Stack for the index in the instructions of jump emit.
+outPtrStack = []  # Stack for the index in outputArray of where gonna put the jump emit in the outputArray.
+
 outputArray = [];  # Temporary array to hold all machine code/instructions.  
-variableInitArray = []  # Temporary array to hold the code for initializing variables
+variableInitArray = []  # Temporary array to hold the code for initializing variables.
+
+whileStack = []  # Stack for the top/start of the current while/do-forever loop.
+breakStack = []  # Stack to hold locations of break statements to insert at the end of while loops.
+classAttrStack = [] # Stack to hold attributes of class declaration as offset for new instance.
 
 varptr = 900  # Arbitrary base address of memory for variables, which starts from this address.
 codeptr = 10  # Address to output next instruction (for machine code, 1-9 are reserved).
 printStartAddress = 0;  # Address to start print subroutine.
 
-functionName = ""  # Stores the current function parsed - used for name mangling
+functionName = ""  # Stores the current function parsed - used for name mangling.
 
 token = None;  # A symbol, will be modified by each call of getToken().
 
@@ -42,22 +53,28 @@ tokenNames = \
     [ "unknownToken", "codesym", "declare", "assignsym", "idsym", "varsym", "number",
      "leftbrace", "rightbrace", "leftbracket", "rightbracket", "functionsym", "returnsym",
      "equals", "plus", "minus", "multiply", "divide",
-     "semicolon", "comma", "sharp",
-     "print", "stringvalue", "endfile" ]
+     "lessthan", "greaterthan", "greaterequal", "lessequal", "notequals", "notsym",
+     "ifsym", "elsesym" , "whilesym",
+     "semicolon", "comma", "sharp", "class", "attribute", "new", "dot",
+     "print", "stringvalue", "endfile", ]
     # More symbol will be added.
 
 # Define tokens as variables in the compiler.
 unknownToken, codesym, declaresym, assignsym, idsym, varsym, number, \
 leftbrace, rightbrace, leftbracket, rightbracket, functionsym, returnsym, \
 equals, plus, minus, multiply, divide, \
-semicolon, comma, sharp, \
+lessthan, greaterthan, greaterequal, lessequal, notequals, notsym, \
+ifsym, elsesym , whilesym, \
+semicolon, comma, sharp, classsym, attributesym, newsym, dotsym, \
 printsym, stringvalue, endfile = range(0, len(tokenNames));
 
 class symbol:
     name = None;  # String representation
     token = None;  # Corresponding reserved token or code defined token.
     value = None;  # For number tokens.
-    address = 0;  # For variables, their runtime address
+    address = 0;  # For variables, their runtime addresses.
+    instance_address = 0; # For attributes, their runtime addresses.
+    attributes_Addresses = None;
     
     def __init__(self, name, token, value=0):
         self.name = name;
@@ -104,13 +121,28 @@ def initSymbolTable():
     addToSymTable('(', leftbracket);
     addToSymTable(')', rightbracket);
     
-    
     addToSymTable('=', assignsym);
-    addToSymTable('==', equals);
     addToSymTable('+', plus);
     addToSymTable('-', minus);
     addToSymTable('*', multiply);
     addToSymTable('/', divide);
+    
+    addToSymTable('==', equals);
+    addToSymTable('<', lessthan);
+    addToSymTable('>', greaterthan);
+    addToSymTable('>=', greaterequal);
+    addToSymTable('<=', lessequal);
+    addToSymTable('!=', notequals);
+    addToSymTable('not', notsym);
+    
+    addToSymTable('if', ifsym);
+    addToSymTable('else', elsesym);
+    addToSymTable('while', whilesym);
+    
+    addToSymTable('class', classsym);
+    addToSymTable('attribute', attributesym);
+    addToSymTable('new', newsym);
+    addToSymTable('.', dotsym);
     
     addToSymTable(EOF, endfile);
 
@@ -161,7 +193,9 @@ def printError(msg):
     print ("Line Number: %d" % (linenumber + 1));  # Print which line the error is.
     printToken(token);  # Print the token the error occurred on
     print ("*" * 50);  # Print footer
-
+    
+    dumpSymbolTable();
+    sys.exit();
 
 # Display everything in the output array.
 def DisplayObjectCode():
@@ -177,10 +211,14 @@ def DisplayObjectCode():
 def emit(memoryAddress, operationCode, parameter):
     global codeptr;
     global outputArray;
+    global outPtrStack;
+    
+    insert = True;  # Indicates whether the emit is an insert into the output code array
     
     if (memoryAddress == 0):  # If no memory address given, this is a standard emit.
         memoryAddress = codeptr;  # Assign current code pointer for this line of instruction.
         codeptr = codeptr + 1;  # Increment code pointer by 1.
+        insert = False  # By default, set insert flag to false.
         
     instruction = "";  # Hold the instruction.
     if parameter != None:  # Instruction format if parameter provided.
@@ -188,7 +226,14 @@ def emit(memoryAddress, operationCode, parameter):
     else:  # Instruction format if none parameter provided.
         instruction = "%6d %-8s" % (memoryAddress, operationCode);
         
-    outputArray.append(instruction);        
+    if (insert):  # If inserting into the output array
+        # print outPtrStack
+        ptr = outPtrStack[-1]  # Get the last pointer from the out pointer stack, but not pop it.
+        outputArray.insert(ptr, instruction)  # Insert the instruction line into the output array at pointer location.
+        outPtrStack[-1] = ptr + 1  # Increment the pointer to next location, used for conditions with two lines.
+    else:
+        outputArray.append(instruction)  # Not an insert, append the line as last line
+        
 
 # Emit the object code for a string.
 def emitString(string):
@@ -315,7 +360,7 @@ def getToken():
         token = lookup(tempName);  # See if this is a reserved token or known token.
         if token is None:  # if not known, then add it to symbol table.
             token = addToSymTable(tempName, idsym);
-        
+            token.attributes_Addresses = [];
         return;
     
     # If this character is numeric then return Token = number & token.value = binary value.
@@ -357,7 +402,7 @@ def getToken():
         return
     
     # If this character is one of those special characters
-    elif ch in ["#", "{", "}", "(", ")", "[", "]", "+", "-", "*", "/", ",", ";", EOF]:
+    elif ch in ["#", "{", "}", "(", ")", "[", "]", "+", "-", "*", "/", ",", ";", ".", EOF]:
         token = lookup(ch);
     
     else:
@@ -422,11 +467,15 @@ def stmtList():
 # Single statement processing function.
 def stmt():
     if token.token == printsym:
-        printStmt();
+        printStmt();  # print keyword, process return statement.
+    elif token.token == ifsym:
+        ifStmt()  # if keyword, process if statement.
+    elif token.token == whilesym:
+        whileStmt()  # while keyword, process while statement
     elif token.token == idsym:
-        assignmentStmt();
+        assignmentStmt();  # = keyword, process assignment statement.
     elif token.token == returnsym:
-        returnStmt()  # return keyword, process return statement
+        returnStmt()  # return keyword, process return statement.
     else: 
         printError("Start of a statement expected.");
 
@@ -460,10 +509,11 @@ def printItem():
         emitString(token.name);  # Put a string into memory.
         emit(0, "call", printStartAddress);
         getToken();  # Skip string token.
+        
     else:
         expression();
-        emit(0, "store", 990)
-        emit(0, "writeint", 990)
+        emit(0, "store", 990);
+        emit(0, "writeint", 990);
     
     emit(0, "loadv", 13);  # Put 13 to accumulator where 13 is a new line character.
     emit(0, "writech", 0);  # Display the value in accumulator as ascii to the console.
@@ -475,22 +525,48 @@ def assignmentStmt():
     
     if lookup(which_ID.name) == None:  # If this ID has not been declared, then error.
         printError("Undeclared variable detected.");
-    
+        
     getToken();  # Skip this ID token.
     
-    if token.token == assignsym:
+    classAttributeAssignmentFlag = False;
+    
+    if token.token == dotsym:
+        classAttributeAssignmentFlag = True;
+        getToken(); # Skip '.'.
+        print "id:" + which_ID.name;
+        which_ID.address = which_ID.instance_address + classAttrStack.index(token.name) + 1; # Add offset of attribute momory.
+        
+        which_ID.attributes_Addresses.append(token.name);
+        which_ID.attributes_Addresses.append(which_ID.address);
+        print which_ID.attributes_Addresses
+        
+        getToken(); # Skip attribute ID;
+        getToken(); # Skip '=';
+        
+        
+    elif token.token == assignsym:
         getToken();  # Skip the '=' token.
+        
+        # Process the new instances.
+        if token.token == newsym:
+            getToken();  # Skip the 'new' keyword.
+            newInstance(which_ID);
+            return;
+        
     else:
         printError("'=' expected in an assignment statement.");
     
     expression();
     
-    emit(0, "store", which_ID.address)  # emit 
+    if classAttributeAssignmentFlag:
+        emit(0, "store", which_ID.address)  # emit 
+    else: 
+        emit(0, "store", which_ID.address)  # emit 
     
 
 #===================================================================================
 # Process expression.
-# Grammer of expression is expression = term operator term, term = factor operator factor.
+# Grammar of expression is expression = term operator term, term = factor operator factor.
 def expression():
     term();  # Process the first term.
     
@@ -544,7 +620,7 @@ def term():
 def factor():
     if token.token == idsym:  # If the factor is an ID token.
         idtoken = token;
-        getToken();  # Skip this number token.
+        getToken();  # Skip this id token.
         
         if token.token == leftbracket:  # Left bracket indicates this is a function call
             getToken();  # Get the next token, skip '(' token
@@ -557,9 +633,22 @@ def factor():
             if token.token == rightbracket: 
                 getToken();  # Right bracket expected to terminate the end of function call
             else: printError(" ) expected as the end of function call in factor.");
+        
+        # For class instance expression.
+        elif token.token == dotsym:
+            
+            getToken(); # Skip '.'.
+            #print idtoken.attributes_Addresses
+        
+            tempAttrAddr = idtoken.attributes_Addresses.__getitem__(idtoken.attributes_Addresses.index(token.name) + 1);
+        
+            emit(0, "load", tempAttrAddr);
+        
+            getToken();  # Skip x.x token.
         else:
             emit(0, "load", idtoken.address)  # Else, # Load the value in the ID address into ACC.
-               
+              
+        
     
     elif token.token == number:  # If the factor is an number token.
         emit(0, "loadv", token.value);  # Load the value of this number into ACC.
@@ -666,17 +755,332 @@ def functionCall(funcName):
 
 # Process a return statement
 def returnStmt():
-    getToken();                               # Skip return token
+    getToken();  # Skip return token
     
     if token.token == leftbracket: 
-        getToken();    # left bracket expected for the start of return expression
+        getToken();  # left bracket expected for the start of return expression
     else: printError(" ( expected for start of return statement expression.")
     
-    expression();                            # calculate the return expression
+    expression();  # calculate the return expression
     
     if token.token == rightbracket: 
-        getToken();   # right bracket expected for the end of the return expression
+        getToken();  # right bracket expected for the end of the return expression
     else: printError(" ) expected for end of return statement expression.")
+    
+    
+# Processes an if statement
+def ifStmt():
+    global condPtrStack
+    emitComment("Start If Statement")  # Comment to notify the start of if statement
+    
+    getToken()  # Get the next token, skip "if" token
+    
+    if token.token == leftbracket: getToken()  # Left bracket expected for condition statement, then skip it
+    else: printError(" ( expected for start of if condition statement.")
+    
+    conditionStmt()  # Process the condition statement
+    
+    if token.token == rightbracket: getToken()  # Right bracket expected for the end of the condition
+    else: printError(" ) expected for end of if conditional statement")
+    
+    if token.token == leftbrace: getToken()  # Left brace expected for the start of the statement list after condition block, then skip it
+    else: printError(" { expected for start of if statement list.")
+    
+    emitComment(" -- End If Statement List")
+    stmtList()  # Process the statements inside the if block
+    
+    if token.token == rightbrace: getToken()  # Right brace expected for closing of statement list, then skip it
+    else: printError(" } expected for end of if statement list.")
+    
+    finishCondition()  # Finish the condition statement by inserting the jump instructions
+    
+    if token.token == elsesym: elseStmt()  # else, process the else statement
+    
+    emitComment("End If Statement")  # emit comment for the end of the if
+
+# process an else statement
+def elseStmt():    
+    global condStack
+    global condPtrStack
+    global codeptr
+    global outPtrStack
+    global outputArray
+    
+    emitComment(" -- Start Else")  # Emit comment to notify of the start of the else statement
+    
+    condStack.append(token)  # Append the current token to the condition stack
+    condPtrStack.append(codeptr)  # Append the current code pointer to the condition pointer stack
+    outPtrStack.append(len(outputArray))  # Append the location to insert the jump pointer in the output array
+    
+    codeptr = codeptr + 1  # Increment the code pointer
+    
+    getToken()  # Get the next token, skip else token
+    
+    if token.token == leftbrace: getToken()  # Left brace expected as the start of else statement
+    else: printError(" { expected for start of else statements.")
+    
+    stmtList()  # process the statement list for the else
+    
+    if token.token == rightbrace: getToken()  # right brace expected as the end of the statement list
+    else: printError(" } expected for end of else statement list.")
+    
+    finishCondition()  # Finish the else condition off
+    
+    emitComment(" -- End Else")  # Emit comment to notify of the end of else statement
+
+# processes a condition statement
+def conditionStmt():                        
+    if token.token == notsym:  # test if the condition is negated symbol "!"
+        getToken()  # is negated, skip "!" token
+        conditionExpStmt(1)  # process rest of condition, notify that is negated
+    else:
+        conditionExpStmt(0)  # process rest of condition, notify that is general
+
+# processes the rest of a condition statement
+def conditionExpStmt(isNot):
+    global condStack
+    global condPtrStack
+    global codeptr
+    global outPtrStack
+    global outputArray
+    
+    expression()  # process the left hand side of the condition statement
+    
+    emit(0, "store", 990)  # store the left-side result in 990
+    emit(0, "push", 990)  # and then push it onto the stack
+    
+    # the next token should be the condition
+    if token.token in [greaterequal, lessequal, equals, notequals, greaterthan, lessthan]: 
+        if isNot == 1:  # If the condition is negated, invert the condition symbol to its opposite
+            if token.token == equals:
+                token.token = notequals
+            elif token.token == notequals:
+                token.token = equals
+            elif token.token == greaterequal:
+                token.token = lessthan
+            elif token.token == lessequal:
+                token.token = greaterthan
+            elif token.token == greaterthan:
+                token.token = lessequal
+            elif token.token == lessthan:
+                token.token = greaterequal
+       
+        condition = token  # Store the condition token
+        condStack.append(condition)  # Put condition token into condition stack
+        
+        getToken()  # Skip condition token
+    else: printError("Relational operator expected in condition statement.")    
+    
+    expression()  # Process the right hand side of the condition expression
+    
+    emit(0, "store", 991)  # Store the right hand expression result in 991
+    emit(0, "pop", 990)  # Pop the left hand side expression result on to 990
+    emit(0, "load", 990)  # Load the left hand expression into Accumulator
+    emit(0, "compare", 991)  # Compare the two expressions on each side of operator
+    
+    condPtrStack.append(codeptr)  # append the current code pointer to the condition stack for later jump inserting usage    
+    
+    outPtrStack.append(len(outputArray))  # append the location in the output array for inserting jump statements to out pointer stack
+    
+    if condition.token in [greaterthan, lessthan]:  # Increment code pointer based on operator
+        codeptr = codeptr + 2  # If it is > or <, gonna do <= or >= and = comparison 
+    else:codeptr = codeptr + 1  # otherwise just jumpeq or jumpnq 
+
+# Complete the final inserting for condition statement
+def finishCondition():
+    global condStack
+    global condPtrStack
+    global codeptr
+    global outPtrStack
+    
+    op = condStack.pop()  # Get the operator from the top of the condition stack
+    ptr = condPtrStack.pop()  # Get the code pointer from the top of the condition pointer stack
+    
+    targetptr = codeptr  # Set target pointer to current code pointer 
+    
+    if token.token == elsesym:
+        targetptr = codeptr + 1  # if the next statement is an else, increment code pointer 
+    
+    if op.token == equals:  # Switch for operator token, built jump statement(s) at the condition pointer location
+        emit(ptr, "jumpne", targetptr)  # For ==, if not equal, then jump, otherwise keeps going
+    elif op.token == notequals:
+        emit(ptr, "jumpeq", targetptr)  # For !=, if equals, then jump, otherwise keeps going
+    elif op.token == greaterthan:
+        emit(ptr, "jumpeq", targetptr)  # For >, if ==, then jump, otherwise keeps going
+        emit(ptr + 1, "jumplt", targetptr)  #        if <, then jump, otherwise keeps going
+    elif op.token == lessthan:
+        emit(ptr, "jumpeq", targetptr)  # For <, if ==, then jump, otherwise keeps going
+        emit(ptr + 1, "jumpgt", targetptr)  #        if >, then jump, otherwise keeps going
+    elif op.token == greaterequal:
+        emit(ptr, "jumplt", targetptr)  # For >=, if <, then jump, otherwise keeps going
+    elif op.token == lessequal:
+        emit(ptr, "jumpgt", targetptr)  # For <=, if >, then jump, otherwise keeps going
+    elif op.token == elsesym:
+        emit(ptr, "jump", targetptr)  # For else, then jump over this else block
+    else:
+        printError("Unknown condition token encountered.")  # should never happen
+        
+    outPtrStack.pop()  # Remove the top of the out pointer stack once used it
+
+
+# process the while statement
+def whileStmt():
+    global codeptr
+    global whileStack
+    global breakStack
+
+    emitComment("Start While")  # Emit comment to notify of the start of while loop
+    
+    getToken()  # Get the next token
+    
+    if token.token == leftbracket: getToken()  # Left bracket expected for the start of condition statement
+    else: printError(" ( expected as while conditional statement.")
+    
+    start = codeptr  # Store the current code pointer
+    
+    whileStack.append(start)  # Append the current code pointer to the top of the while stack
+    breakStack.append([])  # Append the empty list to the break stack
+    
+    conditionStmt()  # Process the condition statement
+    
+    if token.token == rightbracket: getToken()  # Right bracket expect for the end of condition statement, then skip it
+    else: printError(" ) expected as the end of while conditional statement.")
+    
+    if token.token == leftbrace: getToken()  # Left brace expected for the start of the statement list, then skip it
+    else: printError(" { expected as the start of while statement list.")
+    
+    stmtList()  # Process the statement list
+    
+    if token.token == rightbrace: getToken()  # Right brace expected for the end of while statement list
+    else: printError(" } expected as the end of while statement list.")
+    
+    emit(0, "jump", start)  # Emit jump to top of the while loop
+    
+    finishCondition()  # Finish processing the while condition
+    
+    finishBreak()  # Process all the break statements encountered in the loop
+    
+    whileStack.pop()  # Remove the top of the while stack
+    
+    emitComment("End While")  # Emit comment to notify of the end of the while loop
+
+# Process the break statements encountered inside a loop
+def finishBreak():
+    global codeptr
+    global breakStack
+    global outPtrStack
+    
+    tempList = breakStack.pop()  # get the list at the top of the break stack
+    
+    for ptr in tempList:  # For each pointer in list emit jump to current code pointer
+        outPtrStack.append(ptr[1] + 1)  # Append the insert location to out pointer stack for emit
+        emit(ptr[0], "jump", codeptr)  # emit the jump statement
+
+
+# Processes a continue statement
+def continueStmt():
+    global whileStack
+    
+    try:  # Try to emit a jump statement to the pointer at the top
+        emit(0, "jump", whileStack[-1])  # of the while stack, may fail if continue declared outside loop
+    except IndexError:
+        printError("Continue statement not declared inside loop.")
+        
+    getToken()  # get the next token
+
+
+# Process class declarations.
+def classList():
+    
+    classDeclare();
+    
+    while token.token == classsym:
+        classDeclare();
+    
+    
+# Process a class declaration.
+def classDeclare():
+    global varptr;
+    global codeptr;
+    
+    getToken();  # Skip class keyword.
+    if token.token == idsym:
+        #classAttrStack.append(classToken);
+        getToken();  # Skip 'class name'.
+        
+    else: 
+        printError("Class Name is missing...");
+        
+    if token.token == leftbracket: 
+        getToken();  # Skip '('.
+    else: printError("'(' is missing....");
+    
+    if token.token == rightbracket: 
+        getToken();  # Skip ')'.
+    else: printError("')' is missing....");
+    
+    if token.token == leftbrace: 
+        getToken();  # Skip '{'.
+    else: printError("'{' is missing....");
+    
+    while token.token == attributesym:
+        attributeDeclare();
+        
+    if token.token == rightbrace: getToken();  # Skip '}'.
+    else: printError("'}' is missing...");
+
+def attributeDeclare():
+    getToken();  # Skip attribute keyword;
+    
+    #print "attr_name:" + token.name;
+    
+    if token.token == idsym: 
+        attrToken = token;
+        getToken();  # Skip 'class name'.
+        
+        classAttrStack.append(attrToken.name); # Store attribute names to an array.
+        
+        getToken();  # Skip ';'.
+    else: 
+        printError("Attribute Name is missing...");
+
+def newInstance(instanceToken):
+    global varptr;
+    global classAttrStack;
+    
+    emitComment("Start of New Instance");
+    
+    if lookup(instanceToken.name) == None:
+        printError("Uknow class name.");
+    else: 
+        if instanceToken.address == 0:            # If var's address is empty, means it's a new instance.
+            symtable[instanceToken.name].address = varptr   # Assign address to the instance.
+            symtable[instanceToken.name].instance_address = varptr   # Assign address to the instance.
+            variableInit(0, "store", varptr)    # Store acc into memAdr.
+            varptr = varptr + 1         # Increment the variable pointer by 1.
+        else:                           # Else new instance is already declared.
+            printError("%c already declared.")    # Display error message of this instance's text.
+        
+    getToken(); # Skip class name. 
+    
+    if classAttrStack.__len__() > 0:
+        lastMemory = varptr + classAttrStack.__len__();
+        emitComment("Start Reserved Space for New Class Instance.");
+
+        while varptr < lastMemory: # Initialize reserved memories for each instance attribute.
+            emit(0, "store", varptr);
+            varptr = varptr + 1;
+
+    
+    if token.token == leftbracket: 
+        getToken();  # Skip '('.
+    else: printError("'(' is missing....");
+    
+    if token.token == rightbracket: 
+        getToken();  # Skip ')'.
+    else: printError("')' is missing....");
+    
+    emitComment("End of New Instance");
 
 #===================================================================================
 # Main code processing function
@@ -704,7 +1108,12 @@ def code():
     
     if token.token == functionsym:  # If there are functions declared, process them 
         functionList();
-        
+    
+    if token.token == classsym:
+        classList();
+    
+    outPtrStack.append(1)  # Add location to insert initial jump in the out pointer stack, never pop this stack
+    
     emitComment("++ Start Execution ++")
     emit(10, "jump", codeptr)  # Jump over the initial code and function definitions
         

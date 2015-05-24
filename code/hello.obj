@@ -6,6 +6,7 @@
     14 increment 1      
     15 jump     11     
     16 return  
+## ++ Start Execution ++ ##
     10 jump     17     
 ## Start Declaration ##
     17 loadv    2      
@@ -14,12 +15,14 @@
     20 store    901    
     21 loadv    0      
     22 store    902    
-## Start Assginment Statement ##
+## Start Statement List ##
+## Start Assignment Statement ##
     23 load     900    
+    24 store    902    
 ## Start Print Statement ##
-    24 load     902    
-    25 store    990    
-    26 writeint 990    
-    27 loadv    13     
-    28 writech  0      
-    29 halt    
+    25 load     902    
+    26 store    990    
+    27 writeint 990    
+    28 loadv    13     
+    29 writech  0      
+    30 halt    

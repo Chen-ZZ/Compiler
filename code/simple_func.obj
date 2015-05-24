@@ -1,4 +1,5 @@
 ## Start Of Object Code ##
+    10 jump     24     
 ## Reserved Print Subroutine ##
     11 load-Ind 0      
     12 jumpeq   16     
@@ -8,34 +9,35 @@
     16 return  
 ## Start of Function Declaration ##
 ## -- Start Function Statement List ##
-    17 load     901    
+    17 load     902    
     18 store    990    
     19 push     990    
-    20 load     902    
+    20 load     903    
     21 pop      990    
     22 add      990    
     23 return  
 ## -- End Function Statement List ##
 ## End of Function Declaration ##
 ## ++ Start Execution ++ ##
-    10 jump     24     
 ## Start Declaration ##
-    24 loadv    5      
+    24 loadv    0      
     25 store    900    
+    26 loadv    5      
+    27 store    901    
 ## Start Statement List ##
 ## Start Assignment Statement ##
 ##  ++ Start Function Call ##
-    26 load     900    
-    27 store    901    
-    28 load     900    
+    28 load     901    
     29 store    902    
-    30 call     17     
+    30 load     901    
+    31 store    903    
+    32 call     17     
 ##  ++ End Function Call ##
-    31 store    900    
+    33 store    901    
 ## Start Print Statement ##
-    32 load     900    
-    33 store    990    
-    34 writeint 990    
-    35 loadv    13     
-    36 writech  0      
-    37 halt    
+    34 load     901    
+    35 store    990    
+    36 writeint 990    
+    37 loadv    13     
+    38 writech  0      
+    39 halt    
