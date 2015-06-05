@@ -1,0 +1,14 @@
+code Hello;
+declare a, v = 5;
+function summer(sum, mer);
+{
+	return (sum + mer);
+}
+function hammer(ham, mer);
+{
+	return (ham * mer);
+}
+{
+	a = summer(v, hammer(v,v));
+	print(a);
+}

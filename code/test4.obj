@@ -1,0 +1,104 @@
+## Start Of Object Code ##
+    10 jump     17     
+    31 jump     37     
+    47 jump     53     
+    63 jump     69     
+    79 jump     85     
+## Reserved Print Subroutine ##
+    11 load-Ind 0      
+    12 jumpeq   16     
+    13 writech 
+    14 increment 1      
+    15 jump     11     
+    16 return  
+## ++ Start Execution ++ ##
+## Start Declaration ##
+## Start Statement List ##
+## Start Assignment Statement ##
+## Start of New Instance ##
+## Start Reserved Space for New Class Instance. ##
+    17 store    901    
+    18 store    902    
+    19 store    903    
+## End of New Instance ##
+## Start Assignment Statement ##
+## Start of New Instance ##
+## Start Reserved Space for New Class Instance. ##
+    20 store    905    
+    21 store    906    
+    22 store    907    
+## End of New Instance ##
+## Start Assignment Statement ##
+    23 loadv    20     
+    24 store    901    
+## Start Assignment Statement ##
+    25 loadv    30     
+    26 store    902    
+## Start Assignment Statement ##
+    27 loadv    40     
+    28 store    903    
+## Start Assignment Statement ##
+    29 loadv    50     
+    30 store    905    
+## Start Print Statement ##
+    32 constant 88     
+    33 constant 95     
+    34 constant 76     
+    35 constant 58     
+    36 constant 0      
+    37 loadv    32     
+    38 store    1      
+    39 call     11     
+    40 loadv    13     
+    41 writech  0      
+    42 load     901    
+    43 store    990    
+    44 writeint 990    
+    45 loadv    13     
+    46 writech  0      
+    48 constant 88     
+    49 constant 95     
+    50 constant 72     
+    51 constant 58     
+    52 constant 0      
+    53 loadv    48     
+    54 store    1      
+    55 call     11     
+    56 loadv    13     
+    57 writech  0      
+    58 load     902    
+    59 store    990    
+    60 writeint 990    
+    61 loadv    13     
+    62 writech  0      
+    64 constant 88     
+    65 constant 95     
+    66 constant 87     
+    67 constant 58     
+    68 constant 0      
+    69 loadv    64     
+    70 store    1      
+    71 call     11     
+    72 loadv    13     
+    73 writech  0      
+    74 load     903    
+    75 store    990    
+    76 writeint 990    
+    77 loadv    13     
+    78 writech  0      
+    80 constant 89     
+    81 constant 95     
+    82 constant 76     
+    83 constant 58     
+    84 constant 0      
+    85 loadv    80     
+    86 store    1      
+    87 call     11     
+    88 loadv    13     
+    89 writech  0      
+    90 load     905    
+    91 store    990    
+    92 writeint 990    
+    93 loadv    13     
+    94 writech  0      
+    95 halt    

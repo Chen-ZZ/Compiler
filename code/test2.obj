@@ -1,0 +1,112 @@
+## Start Of Object Code ##
+    10 jump     17     
+## Reserved Print Subroutine ##
+    11 load-Ind 0      
+    12 jumpeq   16     
+    13 writech 
+    14 increment 1      
+    15 jump     11     
+    16 return  
+## ++ Start Execution ++ ##
+## Start Declaration ##
+    17 loadv    0      
+    18 store    900    
+    19 loadv    0      
+    20 store    901    
+## Start Statement List ##
+## Start Assignment Statement ##
+    21 loadv    1      
+    22 store    900    
+## Start Assignment Statement ##
+    23 loadv    0      
+    24 store    901    
+## Start While ##
+    25 load     900    
+    26 store    990    
+    27 push     990    
+    28 loadv    5      
+    29 store    991    
+    30 pop      990    
+    31 load     990    
+    32 compare  991    
+    33 jumpgt   49     
+## Start Assignment Statement ##
+    34 load     901    
+    35 store    990    
+    36 push     990    
+    37 load     900    
+    38 pop      990    
+    39 add      990    
+    40 store    901    
+## Start Assignment Statement ##
+    41 load     900    
+    42 store    990    
+    43 push     990    
+    44 loadv    1      
+    45 pop      990    
+    46 add      990    
+    47 store    900    
+    48 jump     25     
+## End While ##
+## Start If Statement ##
+    49 load     900    
+    50 store    990    
+    51 push     990    
+    52 loadv    1      
+    53 store    991    
+    54 pop      990    
+    55 load     990    
+    56 compare  991    
+    58 jump     70     
+    57 jumpne   81     
+##  -- End If Statement List ##
+## Start Print Statement ##
+    59 constant 45     
+    60 constant 45     
+    61 constant 32     
+    62 constant 82     
+    63 constant 101    
+    64 constant 115    
+    65 constant 117    
+    66 constant 108    
+    67 constant 116    
+    68 constant 58     
+    69 constant 0      
+    70 loadv    59     
+    71 store    1      
+    72 call     11     
+    73 loadv    13     
+    74 writech  0      
+    75 load     901    
+    76 store    990    
+    77 writeint 990    
+    78 loadv    13     
+    79 writech  0      
+##  -- Start Else ##
+    81 jump     93     
+    80 jump     103    
+## Start Print Statement ##
+    82 constant 61     
+    83 constant 61     
+    84 constant 32     
+    85 constant 82     
+    86 constant 101    
+    87 constant 115    
+    88 constant 117    
+    89 constant 108    
+    90 constant 116    
+    91 constant 58     
+    92 constant 0      
+    93 loadv    82     
+    94 store    1      
+    95 call     11     
+    96 loadv    13     
+    97 writech  0      
+    98 load     901    
+    99 store    990    
+   100 writeint 990    
+   101 loadv    13     
+   102 writech  0      
+##  -- End Else ##
+## End If Statement ##
+   103 halt    

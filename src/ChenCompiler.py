@@ -20,8 +20,8 @@ import sys;
 ### GLOBAL variables Deceleration. ###
 compilerVersion = 0.7;
 
-srcFileName = "../code/test.txt";  # Path to the source code file.
-outputFileName = "../code/test.obj";  # path for the output machine code obj file.
+srcFileName = "../code/test4.txt";  # Path to the source code file.
+outputFileName = "../code/test4.obj";  # path for the output machine code obj file.
 
 src = [];  # The input file is stored as an array of string lines.
 linenumber = 0;  # The current line number of source code.
